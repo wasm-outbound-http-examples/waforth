@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>HTTP request for WAForth</title>
+    <script type="module">
+        // Based on official example: https://github.com/remko/waforth/blob/v0.20.1/src/web/examples/fetch/fetch.ts
+        import WAForth from "https://cdn.skypack.dev/waforth@0.16.1";
+
+        function withLineBuffer(fn) {
+            let buffer = [];
+            const flush = () => {
+                if (buffer.length > 0) {
+                    fn(buffer.join(''));
+                    buffer = [];
+                }
+            };
+            const r = (c) => {
+                buffer.push(c);
+                if (c === '\n') {
+                    flush();
+                }
+            };
+            r.flush = flush;
+            return r;
+        }
+
+        const forth = new WAForth();
+        forth.onEmit = withLineBuffer(console.log);
+        await forth.load();
+
+        forth.bindAsync("get", async () => {
+            const url = forth.popString();
+            const result = await (
+                await fetch(url)
+            ).text();
+            forth.pushString(result);
+        });
+
+        forth.interpret(`
+: HTTPGET-CB ( -- )
+  IF
+    ." Text: " TYPE CR
+  ELSE
+    ." Unable to fetch " CR
+  THEN
+;
+
+: HTTPGET ( -- )
+  ['] HTTPGET-CB
+  S" get" SCALL
+;
+
+: URL$  S" https://httpbin.org/anything" ;
+URL$ HTTPGET
+`);
+    </script>
+</head>
+<body>
+<h2>Make HTTP requests from inside WASM in Forth using WAForth and bindAsync()</h2>
+
+<p>This example uses
+    <code><a href="https://github.com/remko/waforth/tree/v0.20.1?#asynchronous-bindings">bindAsync()</a></code>.</p>
+<p>See the output in browser developer console.</p>
+
+<p>Actual code:</p>
+<pre>
+
+: URL$  S" https://httpbin.org/anything" ;
+URL$ HTTPGET
+
+</pre>
+<section>
+    <h4>Info</h4>
+    <ul>
+        <li><a href="https://github.com/wasm-outbound-http-examples/waforth/tree/main/browser-and-node/">Demo source code</a></li>
+        <li>Versions used:<small>
+            WAForth: <a href="https://cdn.skypack.dev/waforth@0.16.1">v0.16.1</a>, (<a href="https://github.com/remko/waforth/releases/tag/v0.16.1">source</a>).
+        </small></li>
+    </ul>
+</section>
+<footer><small>Created for (wannabe-awesome) <a href="https://github.com/vasilev/HTTP-request-from-inside-WASM">list</a></small></footer>
+</body>
+</html>
